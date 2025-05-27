@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoodFlix - Your Personal Movie Journal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .api-info {
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .api-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .api-status.active {
+            background: #48bb78;
+            color: white;
+        }
+
+        .api-status.fallback {
+            background: #ed8936;
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .journal-section, .recommendations-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .journal-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .journal-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .mood-indicator {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .mood-indicator.analyzing {
+            background: linear-gradient(270deg, #f7fafc, #e2e8f0, #f7fafc);
+            background-size: 400% 400%;
+            animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .mood-emoji {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .mood-text {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .mood-confidence {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 15px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .movie-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+
+        .movie-poster {
+            width: 100%;
+            height: 200px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .movie-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .movie-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .movie-genre {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .movie-year {
+            color: #4a5568;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .no-recommendations {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 MoodFlix</h1>
+            <p>Discover movies that match your mood through AI-powered journaling</p>
+        </div>
+
+        <div class="api-info">
+            <strong>🤖 AI-Powered Emotion Detection</strong>
+            <span id="apiStatus" class="api-status active">Hugging Face AI Active</span><br>
+            <small>Using advanced transformer models to analyze emotions from your journal entries</small>
+        </div>
+
+        <div class="main-content">
+            <div class="journal-section">
+                <h2 class="section-title">
+                    📖 Your Journal Entry
+                </h2>
+                <textarea 
+                    id="journalEntry" 
+                    class="journal-textarea" 
+                    placeholder="How are you feeling today? Write about your thoughts, experiences, or emotions... (Try: 'I want to live the college moments again, I want to see what actual childhood looks like if i were more outgoing and had connected with friends.')"
+                    oninput="debounceAnalyze()"
+                ></textarea>
+                
+                <div class="mood-indicator" id="moodIndicator">
+                    <div class="mood-emoji" id="moodEmoji">😊</div>
+                    <div class="mood-text" id="moodText">Write something to detect your mood...</div>
+                    <div class="mood-confidence" id="moodConfidence"></div>
+                </div>
+                
+                <button class="analyze-btn" id="analyzeBtn" onclick="getRecommendations()">
+                    Get Movie Recommendations
+                </button>
+            </div>
+
+            <div class="recommendations-section">
+                <h2 class="section-title">
+                    🍿 Movie Recommendations
+                </h2>
+                <div id="movieRecommendations">
+                    <div class="no-recommendations">
+                        Your personalized movie recommendations will appear here based on your journal entry mood.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hugging Face API configuration
+        const HF_API_KEY = "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";
+        const HF_API_URL = "https://api-inference.huggingface.co/models/j-hartmann/emotion-english-distilroberta-base";
+
+        // TMDB API configuration
+        const TMDB_API_KEY = ""; // Users can add their own API key
+        const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+        const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+
+        // Fallback Indian movie database
+        const indianMovieDatabase = {
+            happy: [
+                { title: "3 Idiots", genre: "Comedy/Drama", year: "2009", language: "Hindi", poster: "🎓" },
+                { title: "Queen", genre: "Comedy/Drama", year: "2013", language: "Hindi", poster: "👑" },
+                { title: "Golmaal", genre: "Comedy", year: "2006", language: "Hindi", poster: "😂" },
+                { title: "Chennai Express", genre: "Comedy/Action", year: "2013", language: "Hindi", poster: "🚂" }
+            ],
+            sad: [
+                { title: "Taare Zameen Par", genre: "Drama/Family", year: "2007", language: "Hindi", poster: "⭐" },
+                { title: "My Name is Khan", genre: "Drama", year: "2010", language: "Hindi", poster: "💔" },
+                { title: "Anand", genre: "Drama", year: "1971", language: "Hindi", poster: "😢" },
+                { title: "Masaan", genre: "Drama", year: "2015", language: "Hindi", poster: "🕯️" }
+            ],
+            excited: [
+                { title: "Baahubali", genre: "Action/Adventure", year: "2015", language: "Telugu", poster: "⚔️" },
+                { title: "War", genre: "Action/Thriller", year: "2019", language: "Hindi", poster: "💥" },
+                { title: "Pushpa", genre: "Action/Crime", year: "2021", language: "Telugu", poster: "🔥" },
+                { title: "KGF", genre: "Action/Drama", year: "2018", language: "Kannada", poster: "💎" }
+            ],
+            anxious: [
+                { title: "Tumhari Sulu", genre: "Comedy/Drama", year: "2017", language: "Hindi", poster: "🌸" },
+                { title: "English Vinglish", genre: "Comedy/Drama", year: "2012", language: "Hindi", poster: "📚" },
+                { title: "October", genre: "Drama/Romance", year: "2018", language: "Hindi", poster: "🍂" },
+                { title: "Piku", genre: "Comedy/Drama", year: "2015", language: "Hindi", poster: "🚲" }
+            ],
+            romantic: [
+                { title: "Dilwale Dulhania Le Jayenge", genre: "Romance/Drama", year: "1995", language: "Hindi", poster: "💕" },
+                { title: "Jab We Met", genre: "Romance/Comedy", year: "2007", language: "Hindi", poster: "🚄" },
+                { title: "Yeh Jawaani Hai Deewani", genre: "Romance/Comedy", year: "2013", language: "Hindi", poster: "🎒" },
+                { title: "96", genre: "Romance/Drama", year: "2018", language: "Tamil", poster: "📷" }
+            ],
+            nostalgic: [
+                { title: "Zindagi Na Milegi Dobara", genre: "Adventure/Comedy", year: "2011", language: "Hindi", poster: "🏍️" },
+                { title: "Rang De Basanti", genre: "Drama/History", year: "2006", language: "Hindi", poster: "🇮🇳" },
+                { title: "Student of the Year", genre: "Comedy/Drama", year: "2012", language: "Hindi", poster: "🎓" },
+                { title: "Chhichhore", genre: "Comedy/Drama", year: "2019", language: "Hindi", poster: "🏆" }
+            ],
+            adventurous: [
+                { title: "Zindagi Na Milegi Dobara", genre: "Adventure/Comedy", year: "2011", language: "Hindi", poster: "🪂" },
+                { title: "Dil Chahta Hai", genre: "Comedy/Drama", year: "2001", language: "Hindi", poster: "✈️" },
+                { title: "Highway", genre: "Adventure/Drama", year: "2014", language: "Hindi", poster: "🛣️" },
+                { title: "Karwan", genre: "Adventure/Comedy", year: "2018", language: "Hindi", poster: "🚐" }
+            ],
+            reflective: [
+                { title: "Pink", genre: "Drama/Thriller", year: "2016", language: "Hindi", poster: "⚖️" },
+                { title: "Court", genre: "Drama", year: "2014", language: "Marathi", poster: "🏛️" },
+                { title: "Tumhari Sulu", genre: "Drama/Comedy", year: "2017", language: "Hindi", poster: "🎙️" },
+                { title: "The Lunchbox", genre: "Drama/Romance", year: "2013", language: "Hindi", poster: "🍱" }
+            ]
+        };
+
+        // Enhanced mood keywords for fallback support
+        const moodKeywords = {
+            happy: ['happy', 'joy', 'excited', 'great', 'amazing', 'wonderful', 'love', 'fantastic', 'awesome', 'good', 'smile', 'laugh', 'cheerful', 'delighted', 'blissful', 'elated', 'euphoric', 'gleeful', 'jubilant', 'upbeat', 'positive', 'bright', 'sunny', 'radiant'],
+            
+            sad: ['sad', 'down', 'depressed', 'upset', 'hurt', 'cry', 'tears', 'lonely', 'miss', 'lost', 'disappointed', 'melancholy', 'gloomy', 'sorrowful', 'grief', 'heartbroken', 'dejected', 'despondent', 'blue', 'miserable', 'anguish', 'despair', 'mourn'],
+            
+            excited: ['excited', 'thrilled', 'pumped', 'energetic', 'can\'t wait', 'amazing', 'incredible', 'adventure', 'fun', 'exhilarated', 'hyped', 'enthusiastic', 'eager', 'animated', 'vibrant', 'dynamic', 'electric', 'buzzed', 'anticipation', 'rush'],
+            
+            anxious: ['anxious', 'worried', 'nervous', 'stress', 'overwhelmed', 'scared', 'fear', 'panic', 'tense', 'uneasy', 'restless', 'apprehensive', 'concerned', 'troubled', 'frantic', 'jittery', 'on edge', 'unsettled', 'disturbed', 'agitated'],
+            
+            romantic: ['love', 'romance', 'date', 'kiss', 'heart', 'partner', 'relationship', 'valentine', 'crush', 'affection', 'attraction', 'intimate', 'passionate', 'tender', 'devoted', 'soulmate', 'beloved', 'infatuated', 'adore', 'butterflies', 'smitten'],
+            
+            nostalgic: ['remember', 'childhood', 'past', 'memories', 'miss', 'old times', 'nostalgia', 'reminisce', 'college', 'school', 'growing up', 'younger', 'used to', 'back then', 'flashback', 'reminds me', 'takes me back', 'those days', 'when I was', 'if I were', 'wish I could', 'want to live', 'actual childhood', 'connected with friends', 'outgoing', 'social', 'friendship', 'bonds', 'classmates', 'campus', 'dorm', 'university', 'high school', 'teenage', 'youth', 'adolescence', 'coming of age', 'first time', 'innocent', 'carefree', 'simpler times', 'golden days', 'formative years', 'milestone', 'transition', 'rite of passage'],
+            
+            adventurous: ['adventure', 'explore', 'travel', 'journey', 'discover', 'new', 'experience', 'challenge', 'quest', 'expedition', 'wanderlust', 'escape', 'freedom', 'spontaneous', 'bold', 'daring', 'risk', 'unknown'],
+            
+            reflective: ['think', 'reflect', 'contemplate', 'ponder', 'analyze', 'understand', 'realize', 'learn', 'growth', 'insight', 'perspective', 'meaning', 'purpose', 'philosophy', 'deep', 'profound', 'meaningful', 'introspective']
+        };
+
+        let currentMood = 'neutral';
+        let currentConfidence = 0;
+        let isAnalyzing = false;
+        let debounceTimer = null;
+
+        // Indian language codes for TMDB
+        const INDIAN_LANGUAGES = ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'gu', 'mr', 'pa', 'or'];
+
+        // Mood to genre mapping for TMDB
+        const MOOD_TO_GENRES = {
+            happy: [35, 10402, 10751], // Comedy, Music, Family
+            sad: [18, 10749], // Drama, Romance
+            excited: [28, 12, 53], // Action, Adventure, Thriller
+            anxious: [18, 10770], // Drama, TV Movie
+            romantic: [10749, 35], // Romance, Comedy
+            nostalgic: [18, 10751, 36], // Drama, Family, History
+            adventurous: [12, 28, 878], // Adventure, Action, Science Fiction
+            reflective: [18, 99] // Drama, Documentary
+        };
+
+        // Debounce function to prevent too many API calls
+        function debounceAnalyze() {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            
+            debounceTimer = setTimeout(() => {
+                analyzeRealTime();
+            }, 1000); // Wait 1 second after user stops typing
+        }
+
+        async function analyzeRealTime() {
+            const text = document.getElementById('journalEntry').value;
+            if (text.length < 15) {
+                updateMoodDisplay('neutral', 'Write something to detect your mood...', 0, '');
+                return;
+            }
+
+            if (isAnalyzing) return;
+
+            let detectedMood = 'neutral';
+            let confidence = 0;
+            let source = '';
+            
+            try {
+                // Try Hugging Face API first
+                const result = await analyzeEmotionWithHuggingFace(text);
+                detectedMood = result.mood;
+                confidence = result.confidence;
+                source = 'AI';
+                updateApiStatus('active', 'Hugging Face AI Active');
+            } catch (error) {
+                console.log('Hugging Face API failed, using keyword analysis:', error);
+                // Fallback to keyword analysis
+                const keywordResult = analyzeMoodKeywords(text.toLowerCase());
+                detectedMood = keywordResult.mood;
+                confidence = keywordResult.confidence;
+                source = 'Keywords';
+                updateApiStatus('fallback', 'Keyword Fallback');
+            }
+
+            currentMood = detectedMood;
+            currentConfidence = confidence;
+            
+            const moodMessages = {
+                happy: 'You seem to be in a great mood! 😊',
+                sad: 'It sounds like you\'re feeling down 😔',
+                excited: 'You sound really excited! ⚡',
+                anxious: 'You seem a bit worried 😰',
+                romantic: 'Feeling the love vibes! 💕',
+                nostalgic: 'Longing for those golden memories 🌅',
+                adventurous: 'Ready for some adventure! 🗺️',
+                reflective: 'In a thoughtful, introspective mood 🤔',
+                neutral: 'Your mood seems balanced 😐'
+            };
+
+            const moodEmojis = {
+                happy: '😊',
+                sad: '😔',
+                excited: '⚡',
+                anxious: '😰',
+                romantic: '💕',
+                nostalgic: '🌅',
+                adventurous: '🗺️',
+                reflective: '🤔',
+                neutral: '😐'
+            };
+
+            const confidenceText = confidence > 0 ? `${Math.round(confidence * 100)}% confidence (${source})` : '';
+            updateMoodDisplay(moodEmojis[detectedMood], moodMessages[detectedMood], confidence, confidenceText);
+        }
+
+        async function analyzeEmotionWithHuggingFace(text) {
+            if (isAnalyzing) return { mood: currentMood, confidence: currentConfidence };
+            
+            isAnalyzing = true;
+            updateMoodDisplay('🤖', 'AI is analyzing your emotions...', 0, '', true);
+
+            try {
+                const response = await fetch(HF_API_URL, {
+                    headers: {
+                        'Authorization': `Bearer ${HF_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        inputs: text,
+                        options: { wait_for_model: true }
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (Array.isArray(result) && result.length > 0) {
+                    const emotions = result[0];
+                    const mappedResult = mapHuggingFaceEmotionsToMood(emotions);
+                    isAnalyzing = false;
+                    return mappedResult;
+                } else {
+                    throw new Error('Invalid API response format');
+                }
+                
+            } catch (error) {
+                isAnalyzing = false;
+                throw error;
+            }
+        }
+
+        function mapHuggingFaceEmotionsToMood(emotions) {
+            // Sort emotions by score
+            const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
+            const topEmotion = sortedEmotions[0];
+            
+            // Map Hugging Face emotions to our moods
+            const emotionMapping = {
+                'joy': 'happy',
+                'happiness': 'happy',
+                'sadness': 'sad',
+                'anger': 'anxious',
+                'fear': 'anxious',
+                'surprise': 'excited',
+                'disgust': 'reflective',
+                'love': 'romantic',
+                'optimism': 'happy',
+                'pessimism': 'sad',
+                'anticipation': 'excited',
+                'trust': 'romantic',
+                'neutral': 'neutral'
+            };
+
+            // Enhanced mapping logic with context
+            let detectedMood = emotionMapping[topEmotion.label.toLowerCase()] || 'neutral';
+            let confidence = topEmotion.score;
+
+            // Use secondary emotions for better accuracy
+            if (sortedEmotions.length > 1) {
+                const secondEmotion = sortedEmotions[1];
+                
+                // Special cases for better mood detection
+                if (topEmotion.label.toLowerCase() === 'sadness' && 
+                    (secondEmotion.label.toLowerCase() === 'joy' || secondEmotion.label.toLowerCase() === 'optimism')) {
+                    // Mixed emotions - could be nostalgic
+                    detectedMood = 'nostalgic';
+                    confidence = (topEmotion.score + secondEmotion.score) / 2;
+                }
+                
+                if (topEmotion.label.toLowerCase() === 'anticipation' && 
+                    secondEmotion.label.toLowerCase() === 'joy') {
+                    detectedMood = 'excited';
+                    confidence = Math.max(topEmotion.score, secondEmotion.score);
+                }
+            }
+
+            // Boost confidence if we have multiple supporting emotions
+            const supportingEmotions = sortedEmotions.filter(e => 
+                emotionMapping[e.label.toLowerCase()] === detectedMood
+            );
+            
+            if (supportingEmotions.length > 1) {
+                confidence = Math.min(1.0, confidence * 1.2);
+            }
+
+            return { mood: detectedMood, confidence: confidence };
+        }
+
+        function analyzeMoodKeywords(text) {
+            const moodScores = {};
+            let totalMatches = 0;
+            
+            // Initialize scores
+            Object.keys(moodKeywords).forEach(mood => {
+                moodScores[mood] = 0;
+            });
+
+            // Count keyword matches with weighted scoring
+            Object.entries(moodKeywords).forEach(([mood, keywords]) => {
+                keywords.forEach(keyword => {
+                    const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+                    const matches = text.match(regex);
+                    if (matches) {
+                        // Weight longer phrases more heavily
+                        const weight = keyword.split(' ').length;
+                        const score = matches.length * weight;
+                        moodScores[mood] += score;
+                        totalMatches += score;
+                    }
+                });
+            });
+
+            // Find the mood with highest score
+            const topMoodEntry = Object.entries(moodScores).reduce((a, b) => 
+                moodScores[a[0]] > moodScores[b[0]] ? a : b
+            );
+            
+            const topMood = topMoodEntry[0];
+            const topScore = topMoodEntry[1];
+            
+            // Calculate confidence based on score relative to total matches
+            const confidence = totalMatches > 0 ? Math.min(0.9, topScore / totalMatches) : 0;
+            
+            return {
+                mood: topScore > 0 ? topMood : 'neutral',
+                confidence: confidence
+            };
+        }
+
+        function updateMoodDisplay(emoji, text, confidence, confidenceText, analyzing = false) {
+            const moodIndicator = document.getElementById('moodIndicator');
+            const moodEmoji = document.getElementById('moodEmoji');
+            const moodText = document.getElementById('moodText');
+            const moodConfidence = document.getElementById('moodConfidence');
+            
+            moodEmoji.textContent = emoji;
+            moodText.textContent = text;
+            moodConfidence.textContent = confidenceText;
+            
+            if (analyzing) {
+                moodIndicator.classList.add('analyzing');
+            } else {
+                moodIndicator.classList.remove('analyzing');
+            }
+        }
+
+        function updateApiStatus(status, text) {
+            const apiStatus = document.getElementById('apiStatus');
+            apiStatus.className = `api-status ${status}`;
+            apiStatus.textContent = text;
+        }
+
+        async function getRecommendations() {
+            const recommendationsDiv = document.getElementById('movieRecommendations');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            if (currentMood === 'neutral') {
+                recommendationsDiv.innerHTML = `
+                    <div class="no-recommendations">
+                        Write more about your feelings to get personalized Indian movie recommendations!
+                    </div>
+                `;
+                return;
+            }
+
+            // Show loading state
+            recommendationsDiv.innerHTML = `
+                <div class="no-recommendations">
+                    🎬 Finding perfect Indian movies for your ${currentMood} mood...
+                </div>
+            `;
+
+            analyzeBtn.disabled = true;
+
+            try {
+                let movies;
+                if (TMDB_API_KEY) {
+                    movies = await fetchIndianMoviesFromTMDB(currentMood);
+                } else {
+                    // Use fallback database
+                    movies = indianMovieDatabase[currentMood] || [];
+                }
+
+                displayMovieRecommendations(movies);
+            } catch (error) {
+                console.error('Error fetching movies:', error);
+                // Fallback to local database
+                const movies = indianMovieDatabase[currentMood] || [];
+                displayMovieRecommendations(movies);
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        async function fetchIndianMoviesFromTMDB(mood) {
+            const genres = MOOD_TO_GENRES[mood] || [18]; // Default to Drama
+            const movies = [];
+
+            // Search for Indian movies in different languages
+            for (const language of INDIAN_LANGUAGES.slice(0, 3)) { // Limit to 3 languages for demo
+                try {
+                    const genreId = genres[0]; // Use primary genre
+                    const response = await fetch(
+                        `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=${language}&with_genres=${genreId}&sort_by=popularity.desc&page=1`
+                    );
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const languageMovies = data.results.slice(0, 2).map(movie => ({
+                            title: movie.title || movie.original_title,
+                            genre: getGenreNames(movie.genre_ids),
+                            year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
+                            language: getLanguageName(language),
+                            poster: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null,
+                            overview: movie.overview,
+                            rating: movie.vote_average
+                        }));
+                        movies.push(...languageMovies);
+                    }
+                } catch (error) {
+                    console.error(`Error fetching ${language} movies:`, error);
+                }
+            }
+
+            return movies.length > 0 ? movies : indianMovieDatabase[mood] || [];
+        }
+
+        function getLanguageName(code) {
+            const languageMap = {
+                'hi': 'Hindi', 'ta': 'Tamil', 'te': 'Telugu', 'ml': 'Malayalam',
+                'kn': 'Kannada', 'bn': 'Bengali', 'gu': 'Gujarati', 'mr': 'Marathi',
+                'pa': 'Punjabi', 'or': 'Odia'
+            };
+            return languageMap[code] || code.toUpperCase();
+        }
+
+        function getGenreNames(genreIds) {
+            const genreMap = {
+                28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
+                80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
+                14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
+                9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+                10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+            };
+            return genreIds.slice(0, 2).map(id => genreMap[id]).filter(Boolean).join('/') || 'Drama';
+        }
+
+        function displayMovieRecommendations(movies) {
+            const recommendationsDiv = document.getElementById('movieRecommendations');
+            
+            if (!movies || movies.length === 0) {
+                recommendationsDiv.innerHTML = `
+                    <div class="no-recommendations">
+                        No Indian movies found for this mood. Try writing about different feelings!
+                    </div>
+                `;
+                return;
+            }
+
+            const movieCards = movies.map(movie => `
+                <div class="movie-card">
+                    <div class="movie-poster">
+                        ${movie.poster && movie.poster.startsWith('http') ? 
+                            `<img src="${movie.poster}" alt="${movie.title}">` :
+                            movie.poster || '🎬'
+                        }
+                    </div>
+                    <div class="movie-title">${movie.title}</div>
+                    <div class="movie-genre">${movie.genre}</div>
+                    <div class="movie-year">${movie.language} • ${movie.year}</div>
+                    ${movie.rating ? `<div style="color: #667eea; font-size: 0.8rem; margin-top: 5px;">⭐ ${movie.rating.toFixed(1)}</div>` : ''}
+                    ${movie.overview ? `<div style="font-size: 0.8rem; color: #666; margin-top: 8px; line-height: 1.3;">${movie.overview.substring(0, 100)}...</div>` : ''}
+                </div>
+            `).join('');
+
+            recommendationsDiv.innerHTML = `
+                <div class="movie-grid">
+                    ${movieCards}
+                </div>
+            `;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMoodDisplay('😊', 'Write something to detect your mood...', 0, '');
+            
+            // Check if TMDB API key is available
+            if (TMDB_API_KEY) {
+                updateApiStatus('active', 'TMDB API Active');
+            } else {
+                updateApiStatus('fallback', 'Local Database');
+            }
+        });
+    </script>
+</body>
+</html>
